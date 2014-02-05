@@ -37,6 +37,9 @@ var CBOR = (function () {
 			this.writeUint16(value&0xffff);
 		},
 		writeUint64: function (value) {
+			if (value >= 9007199254740992 || value <= -9007199254740992) {
+				throw new Error('Cannot encode Uint64 of: ' + value + ' magnitude to big (floating point errors)');
+			}
 			this.writeUint32(Math.floor(value/4294967296));
 			this.writeUint32(value%4294967296);
 		}
