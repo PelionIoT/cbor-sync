@@ -43,7 +43,7 @@ var CBOR = (function () {
 			this.writeUint32(Math.floor(value/4294967296));
 			this.writeUint32(value%4294967296);
 		}
-	}
+	};
 	
 	function BufferReader(buffer) {
 		this.buffer = buffer;
@@ -172,6 +172,19 @@ var CBOR = (function () {
 				return header.value;
 			case 1:
 				return -1 -header.value;
+			case 7:
+				switch (header.value) {
+					case 20:
+						return false;
+					case 21:
+						return true;
+					case 22:
+						return null;
+					case 23:
+						return undefined;
+					default:
+						notImplemented();
+				}
 			default:
 				notImplemented();
 		}
@@ -190,6 +203,14 @@ var CBOR = (function () {
 			} else {
 				notImplemented();
 			}
+		} else if (data === false) {
+			writeHeader(7, 20, writer);
+		} else if (data === true) {
+			writeHeader(7, 21, writer);
+		} else if (data === null) {
+			writeHeader(7, 22, writer);
+		} else if (data === undefined) {
+			writeHeader(7, 23, writer);
 		} else {
 			notImplemented();
 		}

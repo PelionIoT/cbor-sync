@@ -2,7 +2,7 @@ var assert = require('chai').assert;
 
 var api = require('../../main.js');
 
-describe('Decode basic data:', function () {
+describe('Integers:', function () {
 	// From: https://tools.ietf.org/html/rfc7049#appendix-A
 	var examples = [
 		{data: 0, encoded: new Buffer('00', 'hex'), symmetric: true},
