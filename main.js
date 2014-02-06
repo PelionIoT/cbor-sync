@@ -201,7 +201,7 @@ var CBOR = (function () {
 					writeHeader(0, data, writer);
 				}
 			} else {
-				notImplemented();
+				throw new Error('Floating-points not supported yet');
 			}
 		} else if (data === false) {
 			writeHeader(7, 20, writer);
