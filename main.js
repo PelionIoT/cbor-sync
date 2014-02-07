@@ -165,6 +165,8 @@ var CBOR = (function () {
 		}
 	}
 	
+	var stopCode = new Error(); // Just a unique object, that won't compare strictly equal to anything else
+	
 	function decodeReader(reader) {
 		var header = readHeader(reader);
 		switch (header.type) {
@@ -172,6 +174,25 @@ var CBOR = (function () {
 				return header.value;
 			case 1:
 				return -1 -header.value;
+			case 2:
+				return reader.readChunk(header.value);
+			case 3:
+				var buffer = reader.readChunk(header.value);
+				return buffer.toString('utf-8');
+			case 4:
+				var arrayLength = header.value;
+				var result = [];
+				if (arrayLength !== null) {
+					for (var i = 0; i < arrayLength; i++) {
+						result[i] = decodeReader(reader);
+					}
+				} else {
+					var item;
+					while ((item = decodeReader(reader)) !== stopCode) {
+						result.push(item);
+					}
+				}
+				return result;
 			case 7:
 				switch (header.value) {
 					case 20:
@@ -192,7 +213,12 @@ var CBOR = (function () {
 	}
 	
 	function encodeWriter(data, writer) {
-		if (typeof data === 'number') {
+		if (Array.isArray(data)) {
+			writeHeader(4, data.length, writer);
+			for (var i = 0; i < data.length; i++) {
+				encodeWriter(data[i], writer);
+			}
+		} else if (typeof data === 'number') {
 			if (Math.floor(data) === data) {
 				// Integer
 				if (data < 0) {
@@ -203,6 +229,13 @@ var CBOR = (function () {
 			} else {
 				throw new Error('Floating-points not supported yet');
 			}
+		} else if (typeof data === 'string') {
+			var buffer = new Buffer(data, 'utf-8');
+			writeHeader(3, buffer.length, writer);
+			writer.writeChunk(buffer);
+		} else if (data instanceof Buffer) {
+			writeHeader(2, data.length, writer);
+			writer.writeChunk(data);
 		} else if (data === false) {
 			writeHeader(7, 20, writer);
 		} else if (data === true) {
