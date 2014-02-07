@@ -221,12 +221,16 @@ var CBOR = (function () {
 						notImplemented();
 				}
 			default:
-				notImplemented();
+				throw new Error('Unsupported header: ' + JSON.stringify(header));
 		}
 		throw new Error('not implemented yet');
 	}
 	
 	function encodeWriter(data, writer) {
+		if (data && typeof data.toCBOR === 'function') {
+			data = data.toCBOR();
+		}
+		
 		if (data === false) {
 			writeHeader(7, 20, writer);
 		} else if (data === true) {
@@ -266,7 +270,7 @@ var CBOR = (function () {
 				encodeWriter(data[keys[i]], writer);
 			}
 		} else {
-			notImplemented();
+			throw new Error('CBOR encoding not supported: ' + data);
 		}
 	}
 	
