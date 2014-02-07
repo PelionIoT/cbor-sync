@@ -11,11 +11,11 @@ var encodedBuffer = CBOR.encode({hello: 'world'});
 var decodedObject = CBOR.decode(encodedBuffer);
 ```
 
-## `toCBOR()` and `toJSON()`
+## `toCBOR()`
 
-Much like the `toJSON()` method, which allows objects to provide a replacement representation for encoding, this package checks for a `toCBOR()` method.  Failing that, it checks for a `toJSON()` method.
+Much like the `toJSON()` method, which allows objects to provide a replacement representation for encoding, this package checks for a `toCBOR()` method.
 
-Note that this step happens *after* any semantic-tagging/-replacement step.
+Note that this step happens *after* any semantic-tagging/-replacement step, so a custom semantic encoder will always override an objects built-in `toCBOR()` method.
 
 ## Semantic extensions
 
