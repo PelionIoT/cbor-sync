@@ -205,6 +205,10 @@ var CBOR = (function () {
 				} else {
 					return result;
 				}
+			case 6:
+				var result = decodeReader(reader);
+				var decoder = semanticDecoders[header.value];
+				return decoder ? decoder(result) : reult;
 			case 7:
 				switch (header.value) {
 					case 20:
@@ -227,6 +231,14 @@ var CBOR = (function () {
 	}
 	
 	function encodeWriter(data, writer) {
+		for (var i = 0; i < semanticEncoders.length; i++) {
+			var replacement = semanticEncoders[i].fn(data);
+			if (replacement !== undefined) {
+				writeHeader(6, semanticEncoders[i].tag, writer);
+				return encodeWriter(replacement, writer);
+			}
+		}
+		
 		if (data && typeof data.toCBOR === 'function') {
 			data = data.toCBOR();
 		}
