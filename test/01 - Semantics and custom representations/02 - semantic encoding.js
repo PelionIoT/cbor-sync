@@ -19,4 +19,14 @@ describe('Custom semantic encodings', function () {
 		
 		assert.deepEqual(decoded, "<Function!>");
 	});
+	
+	it('built-in Date encoding', function () {
+		var data = new Date();
+		
+		var encoded = api.encode(data);
+		var decoded = api.decode(encoded);
+		
+		assert.instanceOf(data, Date);
+		assert.deepEqual(decoded, data);
+	});
 });

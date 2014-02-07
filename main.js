@@ -318,3 +318,11 @@ var CBOR = (function () {
 if (typeof module !== 'undefined') {
 	module.exports = CBOR;
 }
+
+CBOR.addSemanticEncode(0, function (data) {
+	if (data instanceof Date) {
+		return data.toISOString();
+	}
+}).addSemanticDecode(0, function (isoString) {
+	return new Date(isoString);
+})
