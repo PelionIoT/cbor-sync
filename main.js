@@ -180,7 +180,8 @@ var CBOR = (function () {
 				var buffer = reader.readChunk(header.value);
 				return buffer.toString('utf-8');
 			case 4:
-				var arrayLength = header.value;
+			case 5:
+				var arrayLength = (header.type === 4) ? header.value : header.value*2;
 				var result = [];
 				if (arrayLength !== null) {
 					for (var i = 0; i < arrayLength; i++) {
@@ -192,7 +193,15 @@ var CBOR = (function () {
 						result.push(item);
 					}
 				}
-				return result;
+				if (header.type === 5) {
+					var objResult = {};
+					for (var i = 0; i < result.length; i += 2) {
+						objResult[result[i]] = result[i + 1];
+					}
+					return objResult;
+				} else {
+					return result;
+				}
 			case 7:
 				switch (header.value) {
 					case 20:
@@ -213,11 +222,14 @@ var CBOR = (function () {
 	}
 	
 	function encodeWriter(data, writer) {
-		if (Array.isArray(data)) {
-			writeHeader(4, data.length, writer);
-			for (var i = 0; i < data.length; i++) {
-				encodeWriter(data[i], writer);
-			}
+		if (data === false) {
+			writeHeader(7, 20, writer);
+		} else if (data === true) {
+			writeHeader(7, 21, writer);
+		} else if (data === null) {
+			writeHeader(7, 22, writer);
+		} else if (data === undefined) {
+			writeHeader(7, 23, writer);
 		} else if (typeof data === 'number') {
 			if (Math.floor(data) === data) {
 				// Integer
@@ -236,14 +248,18 @@ var CBOR = (function () {
 		} else if (data instanceof Buffer) {
 			writeHeader(2, data.length, writer);
 			writer.writeChunk(data);
-		} else if (data === false) {
-			writeHeader(7, 20, writer);
-		} else if (data === true) {
-			writeHeader(7, 21, writer);
-		} else if (data === null) {
-			writeHeader(7, 22, writer);
-		} else if (data === undefined) {
-			writeHeader(7, 23, writer);
+		} else if (Array.isArray(data)) {
+			writeHeader(4, data.length, writer);
+			for (var i = 0; i < data.length; i++) {
+				encodeWriter(data[i], writer);
+			}
+		} else if (typeof data === 'object') {
+			var keys = Object.keys(data);
+			writeHeader(5, keys.length, writer);
+			for (var i = 0; i < keys.length; i++) {
+				encodeWriter(keys[i], writer);
+				encodeWriter(data[keys[i]], writer);
+			}
 		} else {
 			notImplemented();
 		}
