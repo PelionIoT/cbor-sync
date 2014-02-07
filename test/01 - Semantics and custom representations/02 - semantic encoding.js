@@ -2,7 +2,7 @@ var assert = require('chai').assert;
 
 var api = require('../../main.js');
 
-describe('Custom semantic encodings', function () {
+describe('Custom semantic encodings:', function () {
 	it('addSemanticEncode()/addSemanticDecode()', function () {
 		api.addSemanticEncode(123455, function (data) {
 			if (typeof data === 'function') {
@@ -20,13 +20,22 @@ describe('Custom semantic encodings', function () {
 		assert.deepEqual(decoded, "<Function!>");
 	});
 	
-	it('built-in Date encoding', function () {
+	it('built-in Date encoding (string)', function () {
 		var data = new Date();
 		
 		var encoded = api.encode(data);
 		var decoded = api.decode(encoded);
 		
-		assert.instanceOf(data, Date);
+		assert.instanceOf(decoded, Date);
 		assert.deepEqual(decoded, data);
+	});
+	
+	it('built-in Date decoding (number)', function () {
+		var encoded = new Buffer('c1fb41d4bd45f1baf1aa', 'hex');
+		
+		var decoded = api.decode(encoded);
+		
+		console.log(decoded);
+		assert.instanceOf(decoded, Date);
 	});
 });

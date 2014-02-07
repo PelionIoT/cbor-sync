@@ -4,14 +4,21 @@ var CBOR = (function () {
 	var semanticEncoders = [];
 	var semanticDecoders = {};
 	
-	var notImplemented = function () {throw new Error('Not implemented');};
+	var notImplemented = function (label) {
+		return function () {
+			throw new Error(label + ' not implemented');
+		};
+	};
 	
 	function Reader() {
 	}
 	Reader.prototype = {
-		peekByte: notImplemented,
-		readByte: notImplemented,
-		readChunk: notImplemented,
+		peekByte: notImplemented('peekByte'),
+		readByte: notImplemented('readByte'),
+		readChunk: notImplemented('readChunk'),
+		readFloat16: notImplemented('readFloat16'),
+		readFloat32: notImplemented('readFloat32'),
+		readFloat64: notImplemented('readFloat64'),
 		readUint16: function () {
 			return this.readByte()*256 + this.readByte();
 		},
@@ -25,9 +32,12 @@ var CBOR = (function () {
 	function Writer() {
 	}
 	Writer.prototype = {
-		writeByte: notImplemented,
-		writeChunk: notImplemented,
-		result: notImplemented,
+		writeByte: notImplemented('writeByte'),
+		writeChunk: notImplemented('writeChunk'),
+		result: notImplemented('result'),
+		writeFloat16: notImplemented('writeFloat16'),
+		writeFloat32: notImplemented('writeFloat32'),
+		writeFloat64: notImplemented('writeFloat64'),
 		writeUint16: function (value) {
 			this.writeByte(value >> 8);
 			this.writeByte(value&0xff);
@@ -66,6 +76,24 @@ var CBOR = (function () {
 		this.pos += 4;
 		return result;
 	};
+	BufferReader.prototype.readFloat16 = function () {
+		var hex = this.buffer.slice(this.pos, this.pos + 2).toString('hex').toLowerCase();
+		this.pos += 4;
+		if (hex === '7c00') return Infinity;
+		if (hex === '7e00') return NaN;
+		if (hex === 'fc00') return -Infinity;
+		throw new Error('16-bit floats not supported');
+	};
+	BufferReader.prototype.readFloat32 = function () {
+		var result = this.buffer.readFloatBE(this.pos);
+		this.pos += 4;
+		return result;
+	};
+	BufferReader.prototype.readFloat64 = function () {
+		var result = this.buffer.readDoubleBE(this.pos);
+		this.pos += 8;
+		return result;
+	};
 	BufferReader.prototype.readChunk = function (length) {
 		var result = new Buffer(length);
 		this.buffer.copy(result, 0, this.pos, this.pos += length);
@@ -89,6 +117,16 @@ var CBOR = (function () {
 		}
 		this.byteLength++;
 	}
+	StreamWriter.prototype.writeFloat32 = function (value) {
+		var buffer = new Buffer(4);
+		buffer.writeFloatBE(value, 0);
+		this.writeChunk(buffer);
+	};
+	StreamWriter.prototype.writeFloat64 = function (value) {
+		var buffer = new Buffer(8);
+		buffer.writeDoubleBE(value, 0);
+		this.writeChunk(buffer);
+	};
 	StreamWriter.prototype.writeChunk = function (chunk) {
 		if (!(chunk instanceof Buffer)) throw new TypeError('StreamWriter only accepts Buffers');
 		if (!this.latestBufferOffset) {
@@ -124,26 +162,33 @@ var CBOR = (function () {
 		return result;
 	}
 	
-	function readHeader(reader) {
+	function readHeaderRaw(reader) {
 		var firstByte = reader.readByte();
 		var majorType = firstByte >> 5, value = firstByte&0x1f;
+		return {type: majorType, value: value};
+	}
+	
+	function valueFromHeader(header, reader) {
+		var value = header.value;
 		if (value < 24) {
-			// cool cool cool
+			return value;
 		} else if (value == 24) {
-			value = reader.readByte();
+			return reader.readByte();
 		} else if (value == 25) {
-			value = reader.readUint16();
+			return reader.readUint16();
 		} else if (value == 26) {
-			value = reader.readUint32();
+			return reader.readUint32();
 		} else if (value == 27) {
-			value = reader.readUint64();
+			return reader.readUint64();
 		} else if (value == 31) {
 			// special value for non-terminating arrays/objects
-			value = null;
-		} else {
-			notImplemented();
+			return null;
 		}
-		return {type: majorType, value: value};
+		notImplemented('Additional info: ' + value)();
+	}
+	
+	function writeHeaderRaw(type, value, writer) {
+		writer.writeByte((type<<5)|value);
 	}
 	
 	function writeHeader(type, value, writer) {
@@ -168,20 +213,20 @@ var CBOR = (function () {
 	var stopCode = new Error(); // Just a unique object, that won't compare strictly equal to anything else
 	
 	function decodeReader(reader) {
-		var header = readHeader(reader);
+		var header = readHeaderRaw(reader);
 		switch (header.type) {
 			case 0:
-				return header.value;
+				return valueFromHeader(header, reader);
 			case 1:
-				return -1 -header.value;
+				return -1 -valueFromHeader(header, reader);
 			case 2:
-				return reader.readChunk(header.value);
+				return reader.readChunk(valueFromHeader(header, reader));
 			case 3:
-				var buffer = reader.readChunk(header.value);
+				var buffer = reader.readChunk(valueFromHeader(header, reader));
 				return buffer.toString('utf-8');
 			case 4:
 			case 5:
-				var arrayLength = header.value;
+				var arrayLength = valueFromHeader(header, reader);
 				var result = [];
 				if (arrayLength !== null) {
 					if (header.type === 5) {
@@ -206,11 +251,20 @@ var CBOR = (function () {
 					return result;
 				}
 			case 6:
+				var tag = valueFromHeader(header, reader);
+				var decoder = semanticDecoders[tag];
 				var result = decodeReader(reader);
-				var decoder = semanticDecoders[header.value];
-				return decoder ? decoder(result) : reult;
+				console.log([tag, decoder, result]);
+				return decoder ? decoder(result) : result;
 			case 7:
-				switch (header.value) {
+				if (header.value === 25) {
+					return reader.readFloat16();
+				} else if (header.value === 26) {
+					return reader.readFloat32();
+				} else if (header.value === 27) {
+					return reader.readFloat64();
+				}
+				switch (valueFromHeader(header, reader)) {
 					case 20:
 						return false;
 					case 21:
@@ -222,7 +276,7 @@ var CBOR = (function () {
 					case null:
 						return stopCode;
 					default:
-						notImplemented();
+						throw new Error('Unknown fixed value: ' + header.value);
 				}
 			default:
 				throw new Error('Unsupported header: ' + JSON.stringify(header));
@@ -252,7 +306,7 @@ var CBOR = (function () {
 		} else if (data === undefined) {
 			writeHeader(7, 23, writer);
 		} else if (typeof data === 'number') {
-			if (Math.floor(data) === data) {
+			if (Math.floor(data) === data && data < 9007199254740992 && data > -9007199254740992) {
 				// Integer
 				if (data < 0) {
 					writeHeader(1, -1 - data, writer);
@@ -260,7 +314,8 @@ var CBOR = (function () {
 					writeHeader(0, data, writer);
 				}
 			} else {
-				throw new Error('Floating-points not supported yet');
+				writeHeaderRaw(7, 27, writer);
+				writer.writeFloat64(data);
 			}
 		} else if (typeof data === 'string') {
 			var buffer = new Buffer(data, 'utf-8');
@@ -324,5 +379,7 @@ CBOR.addSemanticEncode(0, function (data) {
 		return data.toISOString();
 	}
 }).addSemanticDecode(0, function (isoString) {
+	return new Date(isoString);
+}).addSemanticDecode(1, function (isoString) {
 	return new Date(isoString);
 })

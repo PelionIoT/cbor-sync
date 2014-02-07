@@ -34,3 +34,8 @@ CBOR.addSemanticDecode(0, function (dateString) {
 	return new Date(dateString);
 });
 ```
+
+## Known issues
+
+* No support for 16-bit floats
+* All floats encoded as 64-bit, regardless of whether they strictly need to be
