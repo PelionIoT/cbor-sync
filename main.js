@@ -181,9 +181,12 @@ var CBOR = (function () {
 				return buffer.toString('utf-8');
 			case 4:
 			case 5:
-				var arrayLength = (header.type === 4) ? header.value : header.value*2;
+				var arrayLength = header.value;
 				var result = [];
 				if (arrayLength !== null) {
+					if (header.type === 5) {
+						arrayLength *= 2;
+					} 
 					for (var i = 0; i < arrayLength; i++) {
 						result[i] = decodeReader(reader);
 					}
@@ -212,6 +215,8 @@ var CBOR = (function () {
 						return null;
 					case 23:
 						return undefined;
+					case null:
+						return stopCode;
 					default:
 						notImplemented();
 				}
