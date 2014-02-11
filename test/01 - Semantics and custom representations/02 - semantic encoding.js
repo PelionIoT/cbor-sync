@@ -35,7 +35,6 @@ describe('Custom semantic encodings:', function () {
 		
 		var decoded = api.decode(encoded);
 		
-		console.log(decoded);
 		assert.instanceOf(decoded, Date);
 	});
 });

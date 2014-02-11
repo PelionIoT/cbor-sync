@@ -16,7 +16,17 @@ var CBOR = (function () {
 		peekByte: notImplemented('peekByte'),
 		readByte: notImplemented('readByte'),
 		readChunk: notImplemented('readChunk'),
-		readFloat16: notImplemented('readFloat16'),
+		readFloat16: function () {
+			var half = this.readUint16();
+			if (half === 0x7c00) return Infinity;
+			if (half === 0x7e00) return NaN;
+			if (half === 0xfc00) return -Infinity;
+			var exponent = (half&0x7ffff) >> 10;
+			var mantissa = half & 0x3ff;
+			var negative = half&0x8000;
+			var magnitude = exponent ? Math.pow(2, exponent - 25)*(1024 + mantissa) : Math.pow(2, -24)*mantissa;
+			return negative ? -magnitude : magnitude;
+		},
 		readFloat32: notImplemented('readFloat32'),
 		readFloat64: notImplemented('readFloat64'),
 		readUint16: function () {
@@ -75,14 +85,6 @@ var CBOR = (function () {
 		var result = this.buffer.readUInt32BE(this.pos);
 		this.pos += 4;
 		return result;
-	};
-	BufferReader.prototype.readFloat16 = function () {
-		var hex = this.buffer.slice(this.pos, this.pos + 2).toString('hex').toLowerCase();
-		this.pos += 4;
-		if (hex === '7c00') return Infinity;
-		if (hex === '7e00') return NaN;
-		if (hex === 'fc00') return -Infinity;
-		throw new Error('16-bit floats not supported');
 	};
 	BufferReader.prototype.readFloat32 = function () {
 		var result = this.buffer.readFloatBE(this.pos);
@@ -254,7 +256,6 @@ var CBOR = (function () {
 				var tag = valueFromHeader(header, reader);
 				var decoder = semanticDecoders[tag];
 				var result = decodeReader(reader);
-				console.log([tag, decoder, result]);
 				return decoder ? decoder(result) : result;
 			case 7:
 				if (header.value === 25) {
