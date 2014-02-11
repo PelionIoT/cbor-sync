@@ -44,7 +44,20 @@ var CBOR = (function () {
 			var magnitude = exponent ? Math.pow(2, exponent - 23 - 127)*(8388608 + mantissa) : Math.pow(2, -23 - 126)*mantissa;
 			return negative ? -magnitude : magnitude;
 		},
-		readFloat64: notImplemented('readFloat64'),
+		readFloat64: function () {
+			var int1 = this.readUint32(), int2 = this.readUint32();
+			var exponent = (int1 >> 20)&0x7ff;
+			var mantissa = (int1&0xfffff)*4294967296 + int2;
+			var negative = int1&0x80000000;
+			if (exponent === 0x7ff) {
+				if (mantissa === 0) {
+					return negative ? -Infinity : Infinity;
+				}
+				return NaN;
+			}
+			var magnitude = exponent ? Math.pow(2, exponent - 52 - 1023)*(4503599627370496 + mantissa) : Math.pow(2, -52 - 1022)*mantissa;
+			return negative ? -magnitude : magnitude;
+		},
 		readUint16: function () {
 			return this.readByte()*256 + this.readByte();
 		},
