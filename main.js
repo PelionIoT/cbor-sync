@@ -18,16 +18,32 @@ var CBOR = (function () {
 		readChunk: notImplemented('readChunk'),
 		readFloat16: function () {
 			var half = this.readUint16();
-			if (half === 0x7c00) return Infinity;
-			if (half === 0x7e00) return NaN;
-			if (half === 0xfc00) return -Infinity;
-			var exponent = (half&0x7ffff) >> 10;
-			var mantissa = half & 0x3ff;
+			var exponent = (half&0x7fff) >> 10;
+			var mantissa = half&0x3ff;
 			var negative = half&0x8000;
+			if (exponent === 0x1f) {
+				if (mantissa === 0) {
+					return negative ? -Infinity : Infinity;
+				}
+				return NaN;
+			}
 			var magnitude = exponent ? Math.pow(2, exponent - 25)*(1024 + mantissa) : Math.pow(2, -24)*mantissa;
 			return negative ? -magnitude : magnitude;
 		},
-		readFloat32: notImplemented('readFloat32'),
+		readFloat32: function () {
+			var intValue = this.readUint32();
+			var exponent = (intValue&0x7fffffff) >> 23;
+			var mantissa = intValue&0x7fffff;
+			var negative = intValue&0x80000000;
+			if (exponent === 0xff) {
+				if (mantissa === 0) {
+					return negative ? -Infinity : Infinity;
+				}
+				return NaN;
+			}
+			var magnitude = exponent ? Math.pow(2, exponent - 23 - 127)*(8388608 + mantissa) : Math.pow(2, -23 - 126)*mantissa;
+			return negative ? -magnitude : magnitude;
+		},
 		readFloat64: notImplemented('readFloat64'),
 		readUint16: function () {
 			return this.readByte()*256 + this.readByte();
