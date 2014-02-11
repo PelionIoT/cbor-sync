@@ -131,15 +131,15 @@ var CBOR = (function () {
 		return result;
 	};
 	
-	function StreamWriter() {
+	function BufferWriter() {
 		this.byteLength = 0;
 		this.defaultBufferLength = 16384; // 16k
 		this.latestBuffer = new Buffer(this.defaultBufferLength);
 		this.latestBufferOffset = 0;
 		this.completeBuffers = [];
 	}
-	StreamWriter.prototype = Object.create(Writer.prototype);
-	StreamWriter.prototype.writeByte = function (value) {
+	BufferWriter.prototype = Object.create(Writer.prototype);
+	BufferWriter.prototype.writeByte = function (value) {
 		this.latestBuffer[this.latestBufferOffset++] = value;
 		if (this.latestBufferOffset >= this.latestBuffer.length) {
 			this.completeBuffers.push(latestBuffer);
@@ -148,18 +148,18 @@ var CBOR = (function () {
 		}
 		this.byteLength++;
 	}
-	StreamWriter.prototype.writeFloat32 = function (value) {
+	BufferWriter.prototype.writeFloat32 = function (value) {
 		var buffer = new Buffer(4);
 		buffer.writeFloatBE(value, 0);
 		this.writeChunk(buffer);
 	};
-	StreamWriter.prototype.writeFloat64 = function (value) {
+	BufferWriter.prototype.writeFloat64 = function (value) {
 		var buffer = new Buffer(8);
 		buffer.writeDoubleBE(value, 0);
 		this.writeChunk(buffer);
 	};
-	StreamWriter.prototype.writeChunk = function (chunk) {
-		if (!(chunk instanceof Buffer)) throw new TypeError('StreamWriter only accepts Buffers');
+	BufferWriter.prototype.writeChunk = function (chunk) {
+		if (!(chunk instanceof Buffer)) throw new TypeError('BufferWriter only accepts Buffers');
 		if (!this.latestBufferOffset) {
 			this.completeBuffers.push(chunk);
 		} else if (this.latestBuffer.length - this.latestBufferOffset >= chunk.length) {
@@ -178,7 +178,7 @@ var CBOR = (function () {
 		}
 		this.byteLength += chunk.length;
 	}
-	StreamWriter.prototype.result = function () {
+	BufferWriter.prototype.result = function () {
 		// Copies them all into a single Buffer
 		var result = new Buffer(this.byteLength);
 		var offset = 0;
@@ -373,7 +373,7 @@ var CBOR = (function () {
 	
 	var api = {
 		encode: function (data) {
-			var writer = new StreamWriter();
+			var writer = new BufferWriter();
 			encodeWriter(data, writer);
 			return writer.result();
 		},
