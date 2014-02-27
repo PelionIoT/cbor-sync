@@ -1,7 +1,10 @@
 {
   "name": "cbor-sync",
-  "version": "0.0.0",
-  "description": "Encode/decode CBOR data (synchronously)",
+  "version": "0.0.1",
+  "description": "Customisable encode/decode for CBOR data (synchronous)",
+  "keywords": [
+    "cbor"
+  ],
   "main": "main.js",
   "scripts": {
     "test": "grunt mochaTest"
