@@ -6,11 +6,14 @@
   "scripts": {
     "test": "grunt mochaTest"
   },
-  "private": true,
   "devDependencies": {
     "grunt": "~0.4.1",
     "chai": "~1.8.1",
     "grunt-mocha-test": "~0.7.0"
+  },
+  "license": {
+    "type": "MIT",
+    "url": "https://raw.github.com/ARM-RD/cbor-sync/master/LICENSE.txt"
   },
   "dependencies": {
   }
