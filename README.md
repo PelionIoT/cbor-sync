@@ -1,5 +1,7 @@
 # Encode/decode CBOR
 
+[![Build Status](https://travis-ci.org/ARM-RD/cbor-sync.svg?branch=master)](https://travis-ci.org/ARM-RD/cbor-sync) [![NPM version](https://badge.fury.io/js/cbor-sync.png)](http://badge.fury.io/js/cbor-sync)
+
 This package provides an extensible CBOR encoder/decoder.
 
 ## Usage
