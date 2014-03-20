@@ -39,4 +39,4 @@ CBOR.addSemanticDecode(0, function (dateString) {
 
 ## Known issues
 
-* All floats encoded as 64-bit, regardless of whether they strictly need to be or not
+* All floats encoded as 64-bit, regardless of whether they strictly need to be
