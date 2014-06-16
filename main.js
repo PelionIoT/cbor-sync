@@ -1,6 +1,30 @@
-var stream = require('stream');
-
 var CBOR = (function () {
+	function BinaryHex(hex) {
+		this.$hex = hex;
+	}
+	BinaryHex.prototype = {
+		toString: function (format) {
+			if (!format || format === 'hex' || format === 16) return this.$hex;
+			if (format === 'utf-8') {
+				var encoded = '';
+				for (var i = 0; i < this.$hex.length; i += 2) {
+					encoded += '%' + this.$hex.substring(i, i + 2);
+				}
+				return decodeURIComponent(encoded);
+			}
+			throw new Error('Unrecognised format: ' + format);
+		}
+	};
+	BinaryHex.fromLatinString = function (latinString) {
+		var hex = '';
+		for (var i = 0; i < latinString.length; i++) {
+			var pair = latinString.charCodeAt(i).toString(16);
+			if (pair.length === 1) pair = "0" + pair;
+			hex += pair;
+		}
+		return new BinaryHex(hex);
+	};
+
 	var semanticEncoders = [];
 	var semanticDecoders = {};
 	
@@ -78,11 +102,11 @@ var CBOR = (function () {
 		writeFloat32: notImplemented('writeFloat32'),
 		writeFloat64: notImplemented('writeFloat64'),
 		writeUint16: function (value) {
-			this.writeByte(value >> 8);
+			this.writeByte((value >> 8)&0xff);
 			this.writeByte(value&0xff);
 		},
 		writeUint32: function (value) {
-			this.writeUint16(value>>16);
+			this.writeUint16((value>>16)&0xffff);
 			this.writeUint16(value&0xffff);
 		},
 		writeUint64: function (value) {
@@ -93,7 +117,7 @@ var CBOR = (function () {
 			this.writeUint32(value%4294967296);
 		}
 	};
-	
+
 	function BufferReader(buffer) {
 		this.buffer = buffer;
 		this.pos = 0;
@@ -191,6 +215,53 @@ var CBOR = (function () {
 			this.latestBuffer.copy(result, offset, 0, this.latestBufferOffset);
 		}
 		return result;
+	}
+		
+	function HexReader(hex) {
+		this.hex = hex;
+		this.pos = 0;
+	}
+	HexReader.prototype = Object.create(Reader.prototype);
+	HexReader.prototype.peekByte = function () {
+		var pair = this.hex.substring(this.pos, 2);
+		console.log(parseInt(pair, 16));
+		return parseInt(pair, 16);
+	};
+	HexReader.prototype.readByte = function () {
+		var pair = this.hex.substring(this.pos, this.pos + 2);
+		this.pos += 2;
+		return parseInt(pair, 16);
+	};
+	HexReader.prototype.readChunk = function (length) {
+		var hex = this.hex.substring(this.pos, this.pos + length*2);
+		this.pos += length*2;
+		if (typeof Buffer === 'function') return new Buffer(hex, 'hex');
+		return new BinaryHex(hex);
+	};
+	
+	function HexWriter() {
+		this.$hex = '';
+	}
+	HexWriter.prototype = Object.create(Writer.prototype);
+	HexWriter.prototype.writeByte = function (value) {
+		if (value < 0 || value > 255) throw new Error('Byte value out of range: ' + value);
+		var hex = value.toString(16);
+		if (hex.length == 1) {
+			hex = '0' + hex;
+		}
+		this.$hex += hex;
+	}
+	HexWriter.prototype.writeChunk = function (chunk) {
+		if (chunk instanceof BinaryHex) {
+			this.$hex += chunk.$hex;
+		} else if (typeof Buffer === 'function' && chunk instanceof Buffer) {
+			this.$hex += chunk.toString('hex');
+		} else {
+			throw new TypeError('HexWriter only accepts BinaryHex or Buffers');
+		}
+	}
+	HexWriter.prototype.result = function () {
+		return new BinaryHex(this.$hex);
 	}
 	
 	function readHeaderRaw(reader) {
@@ -373,12 +444,23 @@ var CBOR = (function () {
 	
 	var api = {
 		encode: function (data) {
-			var writer = new BufferWriter();
+			if (typeof Buffer === 'function') {
+				var writer = new BufferWriter();
+				encodeWriter(data, writer);
+				return writer.result();
+			}
+			var writer = new HexWriter();
 			encodeWriter(data, writer);
 			return writer.result();
 		},
 		decode: function (buffer) {
-			var reader = new BufferReader(buffer);
+			if (typeof Buffer === 'function' && buffer instanceof Buffer) {
+				var reader = new BufferReader(buffer);
+			} else if (buffer.$hex) {
+				var reader = new HexReader(buffer);
+			} else {
+				throw new Error('Unsupported input: ' + buffer);
+			}
 			return decodeReader(reader);
 		},
 		addSemanticEncode: function (tag, fn) {
@@ -396,6 +478,7 @@ var CBOR = (function () {
 			return this;
 		}
 	};
+	if (typeof Buffer !== 'function') api.BinaryHex = BinaryHex;
 
 	return api;
 })();
