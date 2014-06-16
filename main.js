@@ -431,8 +431,11 @@
 				var buffer = new Buffer(data, 'utf-8');
 				writeHeader(3, buffer.length, writer);
 				writer.writeChunk(buffer);
-			} else if (data instanceof Buffer) {
+			} else if (typeof Buffer === 'function' && data instanceof Buffer) {
 				writeHeader(2, data.length, writer);
+				writer.writeChunk(data);
+			} else if (data instanceof BinaryHex) {
+				writeHeader(2, data.$hex.length/2, writer);
 				writer.writeChunk(data);
 			} else if (Array.isArray(data)) {
 				writeHeader(4, data.length, writer);
