@@ -24,7 +24,7 @@
 					}
 					return decodeURIComponent(encoded);
 				}
-				if (format === 'latin') {
+				if (format === 'latin1') {
 					var encoded = [];
 					for (var i = 0; i < this.$hex.length; i += 2) {
 						encoded.push(parseInt(this.$hex.substring(i, i + 2), 16));
@@ -34,7 +34,7 @@
 				throw new Error('Unrecognised format: ' + format);
 			}
 		};
-		BinaryHex.fromLatinString = function (latinString) {
+		BinaryHex.fromLatin1String = function (latinString) {
 			var hex = '';
 			for (var i = 0; i < latinString.length; i++) {
 				var pair = latinString.charCodeAt(i).toString(16);
@@ -608,8 +608,8 @@
 			}
 		});
 		api.addWriter(function (format) {
-			if (format === 'hex') {
-				return new HexWriter();
+			if (format === 'hex' || format === 'latin1') {
+				return new HexWriter(format);
 			}
 		});
 
