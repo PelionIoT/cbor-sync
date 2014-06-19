@@ -12,6 +12,9 @@
 			this.$hex = hex;
 		}
 		BinaryHex.prototype = {
+			length: function () {
+				return this.$hex.length/2;
+			},
 			toString: function (format) {
 				if (!format || format === 'hex' || format === 16) return this.$hex;
 				if (format === 'utf-8') {
@@ -20,6 +23,13 @@
 						encoded += '%' + this.$hex.substring(i, i + 2);
 					}
 					return decodeURIComponent(encoded);
+				}
+				if (format === 'latin') {
+					var encoded = [];
+					for (var i = 0; i < this.$hex.length; i += 2) {
+						encoded.push(parseInt(this.$hex.substring(i, i + 2), 16));
+					}
+					return String.fromCharCode.apply(String, encoded);
 				}
 				throw new Error('Unrecognised format: ' + format);
 			}
@@ -30,6 +40,21 @@
 				var pair = latinString.charCodeAt(i).toString(16);
 				if (pair.length === 1) pair = "0" + pair;
 				hex += pair;
+			}
+			return new BinaryHex(hex);
+		};
+		BinaryHex.fromUtf8String = function (utf8String) {
+			var encoded = encodeURIComponent(utf8String);
+			var hex = '';
+			for (var i = 0; i < encoded.length; i++) {
+				if (encoded.charAt(i) === '%') {
+					hex += encoded.substring(i + 1, i + 3);
+					i += 2;
+				} else {
+					var hexPair = encoded.charCodeAt(i).toString(16);
+					if (hexPair.length < 2) hexPair = "0" + hexPair;
+					hex += hexPair;
+				}
 			}
 			return new BinaryHex(hex);
 		};
@@ -105,7 +130,6 @@
 		}
 		Writer.prototype = {
 			writeByte: notImplemented('writeByte'),
-			writeChunk: notImplemented('writeChunk'),
 			result: notImplemented('result'),
 			writeFloat16: notImplemented('writeFloat16'),
 			writeFloat32: notImplemented('writeFloat32'),
@@ -124,155 +148,14 @@
 				}
 				this.writeUint32(Math.floor(value/4294967296));
 				this.writeUint32(value%4294967296);
-			}
+			},
+			writeString: notImplemented('writeString'),
+			canWriteBinary: function (chunk) {
+				return false;
+			},
+			writeBinary: notImplemented('writeChunk')
 		};
 
-		function BufferReader(buffer) {
-			this.buffer = buffer;
-			this.pos = 0;
-		}
-		BufferReader.prototype = Object.create(Reader.prototype);
-		BufferReader.prototype.peekByte = function () {
-			return this.buffer[this.pos];
-		};
-		BufferReader.prototype.readByte = function () {
-			return this.buffer[this.pos++];
-		};
-		BufferReader.prototype.readUint16 = function () {
-			var result = this.buffer.readUInt16BE(this.pos);
-			this.pos += 2;
-			return result;
-		};
-		BufferReader.prototype.readUint32 = function () {
-			var result = this.buffer.readUInt32BE(this.pos);
-			this.pos += 4;
-			return result;
-		};
-		BufferReader.prototype.readFloat32 = function () {
-			var result = this.buffer.readFloatBE(this.pos);
-			this.pos += 4;
-			return result;
-		};
-		BufferReader.prototype.readFloat64 = function () {
-			var result = this.buffer.readDoubleBE(this.pos);
-			this.pos += 8;
-			return result;
-		};
-		BufferReader.prototype.readChunk = function (length) {
-			var result = new Buffer(length);
-			this.buffer.copy(result, 0, this.pos, this.pos += length);
-			return result;
-		};
-	
-		function BufferWriter() {
-			this.byteLength = 0;
-			this.defaultBufferLength = 16384; // 16k
-			this.latestBuffer = new Buffer(this.defaultBufferLength);
-			this.latestBufferOffset = 0;
-			this.completeBuffers = [];
-		}
-		BufferWriter.prototype = Object.create(Writer.prototype);
-		BufferWriter.prototype.writeByte = function (value) {
-			this.latestBuffer[this.latestBufferOffset++] = value;
-			if (this.latestBufferOffset >= this.latestBuffer.length) {
-				this.completeBuffers.push(latestBuffer);
-				this.latestBuffer = new Buffer(this.defaultBufferLength);
-				this.latestBufferOffset = 0;
-			}
-			this.byteLength++;
-		}
-		BufferWriter.prototype.writeFloat32 = function (value) {
-			var buffer = new Buffer(4);
-			buffer.writeFloatBE(value, 0);
-			this.writeChunk(buffer);
-		};
-		BufferWriter.prototype.writeFloat64 = function (value) {
-			var buffer = new Buffer(8);
-			buffer.writeDoubleBE(value, 0);
-			this.writeChunk(buffer);
-		};
-		BufferWriter.prototype.writeChunk = function (chunk) {
-			if (!(chunk instanceof Buffer)) throw new TypeError('BufferWriter only accepts Buffers');
-			if (!this.latestBufferOffset) {
-				this.completeBuffers.push(chunk);
-			} else if (this.latestBuffer.length - this.latestBufferOffset >= chunk.length) {
-				chunk.copy(this.latestBuffer, this.latestBufferOffset);
-				this.latestBufferOffset += chunk.length;
-				if (this.latestBufferOffset >= this.latestBuffer.length) {
-					this.completeBuffers.push(latestBuffer);
-					this.latestBuffer = new Buffer(this.defaultBufferLength);
-					this.latestBufferOffset = 0;
-				}
-			} else {
-				this.completeBuffers.push(this.latestBuffer.slice(0, this.latestBufferOffset));
-				this.completeBuffers.push(chunk);
-				this.latestBuffer = new Buffer(this.defaultBufferLength);
-				this.latestBufferOffset = 0;
-			}
-			this.byteLength += chunk.length;
-		}
-		BufferWriter.prototype.result = function () {
-			// Copies them all into a single Buffer
-			var result = new Buffer(this.byteLength);
-			var offset = 0;
-			for (var i = 0; i < this.completeBuffers.length; i++) {
-				var buffer = this.completeBuffers[i];
-				buffer.copy(result, offset, 0, buffer.length);
-				offset += buffer.length;
-			}
-			if (this.latestBufferOffset) {
-				this.latestBuffer.copy(result, offset, 0, this.latestBufferOffset);
-			}
-			return result;
-		}
-		
-		function HexReader(hex) {
-			this.hex = hex;
-			this.pos = 0;
-		}
-		HexReader.prototype = Object.create(Reader.prototype);
-		HexReader.prototype.peekByte = function () {
-			var pair = this.hex.substring(this.pos, 2);
-			console.log(parseInt(pair, 16));
-			return parseInt(pair, 16);
-		};
-		HexReader.prototype.readByte = function () {
-			var pair = this.hex.substring(this.pos, this.pos + 2);
-			this.pos += 2;
-			return parseInt(pair, 16);
-		};
-		HexReader.prototype.readChunk = function (length) {
-			var hex = this.hex.substring(this.pos, this.pos + length*2);
-			this.pos += length*2;
-			if (typeof Buffer === 'function') return new Buffer(hex, 'hex');
-			return new BinaryHex(hex);
-		};
-	
-		function HexWriter() {
-			this.$hex = '';
-		}
-		HexWriter.prototype = Object.create(Writer.prototype);
-		HexWriter.prototype.writeByte = function (value) {
-			if (value < 0 || value > 255) throw new Error('Byte value out of range: ' + value);
-			var hex = value.toString(16);
-			if (hex.length == 1) {
-				hex = '0' + hex;
-			}
-			this.$hex += hex;
-		}
-		HexWriter.prototype.writeChunk = function (chunk) {
-			if (chunk instanceof BinaryHex) {
-				this.$hex += chunk.$hex;
-			} else if (typeof Buffer === 'function' && chunk instanceof Buffer) {
-				this.$hex += chunk.toString('hex');
-			} else {
-				throw new TypeError('HexWriter only accepts BinaryHex or Buffers');
-			}
-		}
-		HexWriter.prototype.result = function () {
-			return new BinaryHex(this.$hex);
-		}
-	
 		function readHeaderRaw(reader) {
 			var firstByte = reader.readByte();
 			var majorType = firstByte >> 5, value = firstByte&0x1f;
@@ -428,52 +311,80 @@
 					writer.writeFloat64(data);
 				}
 			} else if (typeof data === 'string') {
-				var buffer = new Buffer(data, 'utf-8');
-				writeHeader(3, buffer.length, writer);
-				writer.writeChunk(buffer);
-			} else if (typeof Buffer === 'function' && data instanceof Buffer) {
-				writeHeader(2, data.length, writer);
-				writer.writeChunk(data);
-			} else if (data instanceof BinaryHex) {
-				writeHeader(2, data.$hex.length/2, writer);
-				writer.writeChunk(data);
-			} else if (Array.isArray(data)) {
-				writeHeader(4, data.length, writer);
-				for (var i = 0; i < data.length; i++) {
-					encodeWriter(data[i], writer);
-				}
+				writer.writeString(data, function (length) {
+					writeHeader(3, length, writer);
+				});
+			} else if (writer.canWriteBinary(data)) {
+				writer.writeBinary(data, function (length) {
+					writeHeader(2, length, writer);
+				});
 			} else if (typeof data === 'object') {
-				var keys = Object.keys(data);
-				writeHeader(5, keys.length, writer);
-				for (var i = 0; i < keys.length; i++) {
-					encodeWriter(keys[i], writer);
-					encodeWriter(data[keys[i]], writer);
+				if (api.config.useToJSON && typeof data.toJSON === 'function') {
+			   		data = data.toJSON();
+			   	}
+				if (Array.isArray(data)) {
+					writeHeader(4, data.length, writer);
+					for (var i = 0; i < data.length; i++) {
+						encodeWriter(data[i], writer);
+					}
+				} else {
+					var keys = Object.keys(data);
+					writeHeader(5, keys.length, writer);
+					for (var i = 0; i < keys.length; i++) {
+						encodeWriter(keys[i], writer);
+						encodeWriter(data[keys[i]], writer);
+					}
 				}
 			} else {
 				throw new Error('CBOR encoding not supported: ' + data);
 			}
 		}
+		
+		var readerFunctions = [];
+		var writerFunctions = [];
 	
 		var api = {
-			encode: function (data) {
-				if (typeof Buffer === 'function') {
-					var writer = new BufferWriter();
-					encodeWriter(data, writer);
-					return writer.result();
-				}
-				var writer = new HexWriter();
-				encodeWriter(data, writer);
-				return writer.result();
+			config: {
+				useToJSON: true
 			},
-			decode: function (buffer) {
-				if (typeof Buffer === 'function' && buffer instanceof Buffer) {
-					var reader = new BufferReader(buffer);
-				} else if (buffer.$hex) {
-					var reader = new HexReader(buffer);
+			addWriter: function (format, writerFunction) {
+				if (typeof format === 'string') {
+					writerFunctions.push(function (f) {
+						if (format === f) return writerFunction(f);
+					});
 				} else {
-					throw new Error('Unsupported input: ' + buffer);
+					writerFunctions.push(format);
 				}
-				return decodeReader(reader);
+			},
+			addReader: function (format, readerFunction) {
+				if (typeof format === 'string') {
+					readerFunctions.push(function (data, f) {
+						if (format === f) return readerFunction(data, f);
+					});
+				} else {
+					readerFunctions.push(format);
+				}
+			},
+			encode: function (data, format) {
+				for (var i = 0; i < writerFunctions.length; i++) {
+					var func = writerFunctions[i];
+					var writer = func(format);
+					if (writer) {
+						encodeWriter(data, writer);
+						return writer.result();
+					}
+				}
+				throw new Error('Unsupported output format: ' + format);
+			},
+			decode: function (data, format) {
+				for (var i = 0; i < readerFunctions.length; i++) {
+					var func = readerFunctions[i];
+					var reader = func(data, format);
+					if (reader) {
+						return decodeReader(reader);
+					}
+				}
+				throw new Error('Unsupported input format: ' + format);
 			},
 			addSemanticEncode: function (tag, fn) {
 				if (typeof tag !== 'number' || tag%1 !== 0 || tag < 0) {
@@ -488,9 +399,219 @@
 				}
 				semanticDecoders[tag] = fn;
 				return this;
-			}
+			},
+			Reader: Reader,
+			Writer: Writer
 		};
-		if (typeof Buffer !== 'function') api.BinaryHex = BinaryHex;
+		
+		/** Node.js Buffers **/
+		function BufferReader(buffer) {
+			this.buffer = buffer;
+			this.pos = 0;
+		}
+		BufferReader.prototype = Object.create(Reader.prototype);
+		BufferReader.prototype.peekByte = function () {
+			return this.buffer[this.pos];
+		};
+		BufferReader.prototype.readByte = function () {
+			return this.buffer[this.pos++];
+		};
+		BufferReader.prototype.readUint16 = function () {
+			var result = this.buffer.readUInt16BE(this.pos);
+			this.pos += 2;
+			return result;
+		};
+		BufferReader.prototype.readUint32 = function () {
+			var result = this.buffer.readUInt32BE(this.pos);
+			this.pos += 4;
+			return result;
+		};
+		BufferReader.prototype.readFloat32 = function () {
+			var result = this.buffer.readFloatBE(this.pos);
+			this.pos += 4;
+			return result;
+		};
+		BufferReader.prototype.readFloat64 = function () {
+			var result = this.buffer.readDoubleBE(this.pos);
+			this.pos += 8;
+			return result;
+		};
+		BufferReader.prototype.readChunk = function (length) {
+			var result = new Buffer(length);
+			this.buffer.copy(result, 0, this.pos, this.pos += length);
+			return result;
+		};
+	
+		function BufferWriter(stringFormat) {
+			this.byteLength = 0;
+			this.defaultBufferLength = 16384; // 16k
+			this.latestBuffer = new Buffer(this.defaultBufferLength);
+			this.latestBufferOffset = 0;
+			this.completeBuffers = [];
+			this.stringFormat = stringFormat;
+		}
+		BufferWriter.prototype = Object.create(Writer.prototype);
+		BufferWriter.prototype.writeByte = function (value) {
+			this.latestBuffer[this.latestBufferOffset++] = value;
+			if (this.latestBufferOffset >= this.latestBuffer.length) {
+				this.completeBuffers.push(this.latestBuffer);
+				this.latestBuffer = new Buffer(this.defaultBufferLength);
+				this.latestBufferOffset = 0;
+			}
+			this.byteLength++;
+		}
+		BufferWriter.prototype.writeFloat32 = function (value) {
+			var buffer = new Buffer(4);
+			buffer.writeFloatBE(value, 0);
+			this.writeBuffer(buffer);
+		};
+		BufferWriter.prototype.writeFloat64 = function (value) {
+			var buffer = new Buffer(8);
+			buffer.writeDoubleBE(value, 0);
+			this.writeBuffer(buffer);
+		};
+		BufferWriter.prototype.writeString = function (string, lengthFunc) {
+			var buffer = new Buffer(string, 'utf-8');
+			lengthFunc(buffer.length);
+			this.writeBuffer(buffer);
+		};
+		BufferWriter.prototype.canWriteBinary = function (data) {
+			return data instanceof Buffer;
+		};
+		BufferWriter.prototype.writeBinary = function (buffer, lengthFunc) {
+			lengthFunc(buffer.length);
+			this.writeBuffer(buffer);
+		};
+		BufferWriter.prototype.writeBuffer = function (chunk) {
+			if (!(chunk instanceof Buffer)) throw new TypeError('BufferWriter only accepts Buffers');
+			if (!this.latestBufferOffset) {
+				this.completeBuffers.push(chunk);
+			} else if (this.latestBuffer.length - this.latestBufferOffset >= chunk.length) {
+				chunk.copy(this.latestBuffer, this.latestBufferOffset);
+				this.latestBufferOffset += chunk.length;
+				if (this.latestBufferOffset >= this.latestBuffer.length) {
+					this.completeBuffers.push(this.latestBuffer);
+					this.latestBuffer = new Buffer(this.defaultBufferLength);
+					this.latestBufferOffset = 0;
+				}
+			} else {
+				this.completeBuffers.push(this.latestBuffer.slice(0, this.latestBufferOffset));
+				this.completeBuffers.push(chunk);
+				this.latestBuffer = new Buffer(this.defaultBufferLength);
+				this.latestBufferOffset = 0;
+			}
+			this.byteLength += chunk.length;
+		}
+		BufferWriter.prototype.result = function () {
+			// Copies them all into a single Buffer
+			var result = new Buffer(this.byteLength);
+			var offset = 0;
+			for (var i = 0; i < this.completeBuffers.length; i++) {
+				var buffer = this.completeBuffers[i];
+				buffer.copy(result, offset, 0, buffer.length);
+				offset += buffer.length;
+			}
+			if (this.latestBufferOffset) {
+				this.latestBuffer.copy(result, offset, 0, this.latestBufferOffset);
+			}
+			
+			if (this.stringFormat) return result.toString(this.stringFormat);
+			return result;
+		}
+		
+		if (typeof Buffer === 'function') {
+			api.addReader(function (data, format) {
+				if (data instanceof Buffer) {
+					return new BufferReader(data);
+				}
+				if (format === 'hex' || format === 'base64') {
+					var buffer = new Buffer(data, format);
+					return new BufferReader(buffer);
+				}
+			});
+			api.addWriter(function (format) {
+				if (!format || format === 'buffer') {
+					return new BufferWriter();
+				} else if (format === 'hex' || format === 'base64') {
+					return new BufferWriter(format);
+				}
+			});
+		}
+		
+		/** Hex-encoding (and Latin1) for browser **/
+		function HexReader(hex) {
+			this.hex = hex;
+			this.pos = 0;
+		}
+		HexReader.prototype = Object.create(Reader.prototype);
+		HexReader.prototype.peekByte = function () {
+			var pair = this.hex.substring(this.pos, 2);
+			return parseInt(pair, 16);
+		};
+		HexReader.prototype.readByte = function () {
+			var pair = this.hex.substring(this.pos, this.pos + 2);
+			this.pos += 2;
+			return parseInt(pair, 16);
+		};
+		HexReader.prototype.readChunk = function (length) {
+			var hex = this.hex.substring(this.pos, this.pos + length*2);
+			this.pos += length*2;
+			if (typeof Buffer === 'function') return new Buffer(hex, 'hex');
+			return new BinaryHex(hex);
+		};
+	
+		function HexWriter(finalFormat) {
+			this.$hex = '';
+			this.finalFormat = finalFormat || 'hex'
+		}
+		HexWriter.prototype = Object.create(Writer.prototype);
+		HexWriter.prototype.writeByte = function (value) {
+			if (value < 0 || value > 255) throw new Error('Byte value out of range: ' + value);
+			var hex = value.toString(16);
+			if (hex.length == 1) {
+				hex = '0' + hex;
+			}
+			this.$hex += hex;
+		}
+		HexWriter.prototype.canWriteBinary = function (chunk) {
+			return chunk instanceof BinaryHex || (typeof Buffer === 'function' && chunk instanceof Buffer);
+		}
+		HexWriter.prototype.writeBinary = function (chunk, lengthFunction) {
+			if (chunk instanceof BinaryHex) {
+				lengthFunction(chunk.length());
+				this.$hex += chunk.$hex;
+			} else if (typeof Buffer === 'function' && chunk instanceof Buffer) {
+				lengthFunction(chunk.length);
+				this.$hex += chunk.toString('hex');
+			} else {
+				throw new TypeError('HexWriter only accepts BinaryHex or Buffers');
+			}
+		}
+		HexWriter.prototype.result = function () {
+			if (this.finalFormat === 'buffer' && typeof Buffer === 'function') {
+				return new Buffer(this.$hex, 'hex');
+			}
+			return new BinaryHex(this.$hex).toString(this.finalFormat);
+		}
+		HexWriter.prototype.writeString = function (string, lengthFunction) {
+			var buffer = BinaryHex.fromUtf8String(string);
+			lengthFunction(buffer.length());
+			this.$hex += buffer.$hex;
+		}
+
+		api.addReader(function (data, format) {
+			if (data instanceof BinaryHex || data.$hex) {
+				return new HexReader(data.$hex);
+			}
+			if (format === 'hex') {
+				return new HexReader(data)
+			}
+		});
+		api.addWriter(function (format) {
+			if (format === 'hex') {
+				return new HexWriter();
+			}
+		});
 
 		return api;
 	})();
