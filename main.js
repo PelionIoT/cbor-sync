@@ -602,9 +602,10 @@
 		api.addReader(function (data, format) {
 			if (data instanceof BinaryHex || data.$hex) {
 				return new HexReader(data.$hex);
-			}
-			if (format === 'hex') {
+			} else if (format === 'hex') {
 				return new HexReader(data)
+			} else if (format === 'latin1') {
+				return new HexReader(BinaryHex.fromLatin1String(data).toString('hex'));
 			}
 		});
 		api.addWriter(function (format) {
