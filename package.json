@@ -1,6 +1,6 @@
 {
   "name": "cbor-sync",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CBOR encode/decode (synchronous, semantic, browser-compatible)",
   "homepage": "https://github.com/ARM-RD/cbor-sync",
   "bugs": "https://github.com/ARM-RD/cbor-sync/issues",

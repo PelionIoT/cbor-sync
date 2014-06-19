@@ -1,6 +1,6 @@
 {
   "name": "cbor-sync",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "homepage": "https://github.com/ARM-RD/cbor-sync",
   "authors": [
     "Geraint Luff <luffgd@gmail.com>"
