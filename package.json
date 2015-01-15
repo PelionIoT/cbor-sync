@@ -2,8 +2,8 @@
   "name": "cbor-sync",
   "version": "1.0.0",
   "description": "CBOR encode/decode (synchronous, semantic, browser-compatible)",
-  "homepage": "https://github.com/ARM-RD/cbor-sync",
-  "bugs": "https://github.com/ARM-RD/cbor-sync/issues",
+  "homepage": "https://github.com/ARMmbed/cbor-sync",
+  "bugs": "https://github.com/ARMmbed/cbor-sync/issues",
   "keywords": [
     "cbor"
   ],
@@ -26,11 +26,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ARM-RD/cbor-sync.git"
+    "url": "https://github.com/ARMmbed/cbor-sync.git"
   },
   "license": {
     "type": "MIT",
-    "url": "https://raw.github.com/ARM-RD/cbor-sync/master/LICENSE.txt"
+    "url": "https://raw.github.com/ARMmbed/cbor-sync/master/LICENSE.txt"
   },
   "dependencies": {
   }
