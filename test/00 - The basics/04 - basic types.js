@@ -5,10 +5,10 @@ var api = require('../../main.js');
 describe('Basic types:', function () {
 	// From: https://tools.ietf.org/html/rfc7049#appendix-A
 	var examples = [
-		{data: false, encoded: new Buffer('f4', 'hex'), symmetric: true},
-		{data: true, encoded: new Buffer('f5', 'hex'), symmetric: true},
-		{data: null, encoded: new Buffer('f6', 'hex'), symmetric: true},
-		{data: undefined, encoded: new Buffer('f7', 'hex'), symmetric: true},
+		{data: false, encoded: Buffer.from('f4', 'hex'), symmetric: true},
+		{data: true, encoded: Buffer.from('f5', 'hex'), symmetric: true},
+		{data: null, encoded: Buffer.from('f6', 'hex'), symmetric: true},
+		{data: undefined, encoded: Buffer.from('f7', 'hex'), symmetric: true},
 	];
 	
 	examples.forEach(function (example, index) {

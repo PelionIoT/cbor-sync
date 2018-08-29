@@ -31,7 +31,7 @@ describe('Custom semantic encodings:', function () {
 	});
 	
 	it('built-in Date decoding (number)', function () {
-		var encoded = new Buffer('c1fb41d4bd45f1baf1aa', 'hex');
+		var encoded = Buffer.from('c1fb41d4bd45f1baf1aa', 'hex');
 		
 		var decoded = api.decode(encoded);
 		

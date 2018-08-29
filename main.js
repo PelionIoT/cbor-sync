@@ -437,7 +437,7 @@
 			return result;
 		};
 		BufferReader.prototype.readChunk = function (length) {
-			var result = new Buffer(length);
+			var result = Buffer.alloc(length);
 			this.buffer.copy(result, 0, this.pos, this.pos += length);
 			return result;
 		};
@@ -445,7 +445,7 @@
 		function BufferWriter(stringFormat) {
 			this.byteLength = 0;
 			this.defaultBufferLength = 16384; // 16k
-			this.latestBuffer = new Buffer(this.defaultBufferLength);
+			this.latestBuffer = Buffer.alloc(this.defaultBufferLength);
 			this.latestBufferOffset = 0;
 			this.completeBuffers = [];
 			this.stringFormat = stringFormat;
@@ -455,23 +455,23 @@
 			this.latestBuffer[this.latestBufferOffset++] = value;
 			if (this.latestBufferOffset >= this.latestBuffer.length) {
 				this.completeBuffers.push(this.latestBuffer);
-				this.latestBuffer = new Buffer(this.defaultBufferLength);
+				this.latestBuffer = Buffer.alloc(this.defaultBufferLength);
 				this.latestBufferOffset = 0;
 			}
 			this.byteLength++;
 		}
 		BufferWriter.prototype.writeFloat32 = function (value) {
-			var buffer = new Buffer(4);
+			var buffer = Buffer.alloc(4);
 			buffer.writeFloatBE(value, 0);
 			this.writeBuffer(buffer);
 		};
 		BufferWriter.prototype.writeFloat64 = function (value) {
-			var buffer = new Buffer(8);
+			var buffer = Buffer.alloc(8);
 			buffer.writeDoubleBE(value, 0);
 			this.writeBuffer(buffer);
 		};
 		BufferWriter.prototype.writeString = function (string, lengthFunc) {
-			var buffer = new Buffer(string, 'utf-8');
+			var buffer = Buffer.from(string, 'utf-8');
 			lengthFunc(buffer.length);
 			this.writeBuffer(buffer);
 		};
@@ -491,20 +491,20 @@
 				this.latestBufferOffset += chunk.length;
 				if (this.latestBufferOffset >= this.latestBuffer.length) {
 					this.completeBuffers.push(this.latestBuffer);
-					this.latestBuffer = new Buffer(this.defaultBufferLength);
+					this.latestBuffer = Buffer.alloc(this.defaultBufferLength);
 					this.latestBufferOffset = 0;
 				}
 			} else {
 				this.completeBuffers.push(this.latestBuffer.slice(0, this.latestBufferOffset));
 				this.completeBuffers.push(chunk);
-				this.latestBuffer = new Buffer(this.defaultBufferLength);
+				this.latestBuffer = Buffer.alloc(this.defaultBufferLength);
 				this.latestBufferOffset = 0;
 			}
 			this.byteLength += chunk.length;
 		}
 		BufferWriter.prototype.result = function () {
 			// Copies them all into a single Buffer
-			var result = new Buffer(this.byteLength);
+			var result = Buffer.alloc(this.byteLength);
 			var offset = 0;
 			for (var i = 0; i < this.completeBuffers.length; i++) {
 				var buffer = this.completeBuffers[i];
@@ -525,7 +525,7 @@
 					return new BufferReader(data);
 				}
 				if (format === 'hex' || format === 'base64') {
-					var buffer = new Buffer(data, format);
+					var buffer = Buffer.from(data, format);
 					return new BufferReader(buffer);
 				}
 			});
@@ -556,7 +556,7 @@
 		HexReader.prototype.readChunk = function (length) {
 			var hex = this.hex.substring(this.pos, this.pos + length*2);
 			this.pos += length*2;
-			if (typeof Buffer === 'function') return new Buffer(hex, 'hex');
+			if (typeof Buffer === 'function') return Buffer.from(hex, 'hex');
 			return new BinaryHex(hex);
 		};
 	
@@ -589,7 +589,7 @@
 		}
 		HexWriter.prototype.result = function () {
 			if (this.finalFormat === 'buffer' && typeof Buffer === 'function') {
-				return new Buffer(this.$hex, 'hex');
+				return Buffer.from(this.$hex, 'hex');
 			}
 			return new BinaryHex(this.$hex).toString(this.finalFormat);
 		}
