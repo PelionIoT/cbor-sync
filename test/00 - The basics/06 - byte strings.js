@@ -5,8 +5,8 @@ var api = require('../../main.js');
 describe('Byte Strings:', function () {
 	// From: https://tools.ietf.org/html/rfc7049#appendix-A
 	var examples = [
-		{data: new Buffer('0255333A83fB3f', 'hex'), encoded: new Buffer('470255333A83fB3f', 'hex'), symmetric: true},
-		{data: new Buffer(0), encoded: new Buffer('40', 'hex'), symmetric: true},
+		{data: Buffer.from('0255333A83fB3f', 'hex'), encoded: Buffer.from('470255333A83fB3f', 'hex'), symmetric: true},
+		{data: Buffer.alloc(0), encoded: Buffer.from('40', 'hex'), symmetric: true},
 	];
 	
 	examples.forEach(function (example, index) {
