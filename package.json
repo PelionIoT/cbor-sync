@@ -1,6 +1,6 @@
 {
   "name": "cbor-sync",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "CBOR encode/decode (synchronous, semantic, browser-compatible)",
   "homepage": "https://github.com/ARMmbed/cbor-sync",
   "bugs": "https://github.com/ARMmbed/cbor-sync/issues",
