@@ -437,6 +437,8 @@
 			return result;
 		};
 		BufferReader.prototype.readChunk = function (length) {
+			if (length > this.buffer.length)
+				throw new Error('Chunk length cannot be longer than input buffer');
 			var result = Buffer.alloc(length);
 			this.buffer.copy(result, 0, this.pos, this.pos += length);
 			return result;
