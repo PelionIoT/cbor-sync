@@ -342,7 +342,7 @@
 		
 		var readerFunctions = [];
 		var writerFunctions = [];
-	
+
 		var api = {
 			config: {
 				useToJSON: true
@@ -411,11 +411,11 @@
 		}
 		BufferReader.prototype = Object.create(Reader.prototype);
 		BufferReader.prototype.consume = function (bytes) {
-            const start = this.pos;
-            this.pos += bytes;
-            if (this.pos > this.buffer.length) throw new Error('Unexpected end of input');
-            return start;
-        }
+			const start = this.pos;
+			this.pos += bytes;
+			if (this.pos > this.buffer.length) throw new Error('Unexpected end of input');
+			return start;
+		};
 		BufferReader.prototype.peekByte = function () {
 			return this.buffer[this.pos];
 		};
@@ -435,7 +435,7 @@
 			return this.buffer.readDoubleBE(this.consume(8));
 		};
 		BufferReader.prototype.readChunk = function (length) {
-            const start = this.consume(length);
+			const start = this.consume(length);
 			var result = Buffer.alloc(length);
 			this.buffer.copy(result, 0, start, start+length);
 			return result;

@@ -34,7 +34,7 @@ describe('Arrays:', function () {
 	})
 
 	it('Should catch invalid lengths', function () {
-        expect(() => api.decode(Buffer.from('BAFFFFFFFF', 'hex'))).to.throw();
+		expect(() => api.decode(Buffer.from('BAFFFFFFFF', 'hex'))).to.throw();
 	});
 
 });
