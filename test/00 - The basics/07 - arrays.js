@@ -1,4 +1,5 @@
 var assert = require('chai').assert;
+var expect = require('chai').expect;
 
 var api = require('../../main.js');
 
@@ -18,7 +19,7 @@ describe('Arrays:', function () {
 		{data: [1, [2, 3], [4, 5]], encoded: Buffer.from('83018202039f0405ff', 'hex'), symmetric: false},
 		{data: [1, [2, 3], [4, 5]], encoded: Buffer.from('83019f0203ff820405', 'hex'), symmetric: false},
 	];
-	
+
 	examples.forEach(function (example, index) {
 		it('Example ' + index, function () {
 			var decoded = api.decode(example.encoded);
@@ -31,4 +32,9 @@ describe('Arrays:', function () {
 			})
 		}
 	})
+
+	it('Should catch invalid lengths', function () {
+        expect(() => api.decode(Buffer.from('BAFFFFFFFF', 'hex'))).to.throw();
+	});
+
 });
