@@ -410,37 +410,34 @@
 			this.pos = 0;
 		}
 		BufferReader.prototype = Object.create(Reader.prototype);
+		BufferReader.prototype.consume = function (bytes) {
+            const start = this.pos;
+            this.pos += bytes;
+            if (this.pos > this.buffer.length) throw new Error('Unexpected end of input');
+            return start;
+        }
 		BufferReader.prototype.peekByte = function () {
 			return this.buffer[this.pos];
 		};
 		BufferReader.prototype.readByte = function () {
-			return this.buffer[this.pos++];
+			return this.buffer[this.consume(1)];
 		};
 		BufferReader.prototype.readUint16 = function () {
-			var result = this.buffer.readUInt16BE(this.pos);
-			this.pos += 2;
-			return result;
+			return this.buffer.readUInt16BE(this.consume(2));
 		};
 		BufferReader.prototype.readUint32 = function () {
-			var result = this.buffer.readUInt32BE(this.pos);
-			this.pos += 4;
-			return result;
+			return this.buffer.readUInt32BE(this.consume(4));
 		};
 		BufferReader.prototype.readFloat32 = function () {
-			var result = this.buffer.readFloatBE(this.pos);
-			this.pos += 4;
-			return result;
+			return this.buffer.readFloatBE(this.consume(4));
 		};
 		BufferReader.prototype.readFloat64 = function () {
-			var result = this.buffer.readDoubleBE(this.pos);
-			this.pos += 8;
-			return result;
+			return this.buffer.readDoubleBE(this.consume(8));
 		};
 		BufferReader.prototype.readChunk = function (length) {
-			if (length > this.buffer.length)
-				throw new Error('Chunk length cannot be longer than input buffer');
+            const start = this.consume(length);
 			var result = Buffer.alloc(length);
-			this.buffer.copy(result, 0, this.pos, this.pos += length);
+			this.buffer.copy(result, 0, start, start+length);
 			return result;
 		};
 	
